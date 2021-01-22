@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) || class_exists( 'WPGitHubUpdater' ) || class_exists
 /**
  *
  *
- * @version 1.6
+ * @version 1.7
  * @author Joachim Kudish <info@jkudish.com>
  * @link http://jkudish.com
  * @package WP_GitHub_Updater
@@ -36,7 +36,7 @@ class WP_GitHub_Updater {
 	/**
 	 * GitHub Updater version
 	 */
-	const VERSION = 1.6;
+	const VERSION = 1.7;
 
 	/**
 	 * @var $config the config for the updater
@@ -56,6 +56,11 @@ class WP_GitHub_Updater {
 	 */
 	private $github_data;
 
+	/**
+	 * @var $github_latest_release temporiraly store the data fetched from GitHub, allows us to only load the data once per class instance
+	 * @access private
+	 */
+	private $github_latest_release;
 
 	/**
 	 * Class Constructor
@@ -216,20 +221,46 @@ class WP_GitHub_Updater {
 
 		if ( $this->overrule_transients() || ( !isset( $version ) || !$version || '' == $version ) ) {
 
-			$raw_response = $this->remote_get( trailingslashit( $this->config['raw_url'] ) . basename( $this->config['slug'] ) );
+			$version = false;
 
-			if ( is_wp_error( $raw_response ) )
-				$version = false;
+			// Added for 1.7
+			// Fetch version tag from releases/latest as first choice
 
-			if (is_array($raw_response)) {
-				if (!empty($raw_response['body']))
-					preg_match( '/.*Version\:\s*(.*)$/mi', $raw_response['body'], $matches );
+			$_latest = $this->get_latest_release();
+
+			if ( !empty( $_latest->tag_name )) {
+				// Extract version number string from the tag_name
+				// Presumes tag may include some text prior to the version number (e.g. 'Release 1.2.3' or 'v1.2.4')
+				// or text after the version string separated by whitespace.
+				// tag_name = 'v2.0.0beta2' returns version string 2.0.0beta2
+				// Requires at least 2-digit (major.minor) version string
+				preg_match ( '/(?:[0-9]+\.)+[0-9A-Za-z-.]+/', $_latest->tag_name, $matches );
+
+				if ( empty( $matches[0] ) )
+					$version = false;
+				else
+					$version = $matches[0];
+				do_action ( 'qm/debug', 'Version selected from latest release: {version}', ['version' => $version]);
 			}
 
-			if ( empty( $matches[1] ) )
-				$version = false;
-			else
-				$version = $matches[1];
+			// If no release tag, try version string in plugin data block
+			if ( false === $version ) {
+				$raw_response = $this->remote_get( trailingslashit( $this->config['raw_url'] ) . basename( $this->config['slug'] ) );
+
+				if ( is_wp_error( $raw_response ) )
+					$version = false;
+
+				if (is_array($raw_response)) {
+					if (!empty($raw_response['body']))
+						preg_match( '/.*Version\:\s*(.*)$/mi', $raw_response['body'], $matches );
+				}
+
+				if ( empty( $matches[1] ) )
+					$version = false;
+				else
+					$version = $matches[1];
+				error_log('Version selected from plugin data block: ' . $version);
+			}
 
 			// back compat for older readme version handling
 			// only done when there is no version found in file name
@@ -246,6 +277,7 @@ class WP_GitHub_Updater {
 					if ( -1 == version_compare( $version, $version_readme ) )
 						$version = $version_readme;
 				}
+				error_log('Version selected from Readme: ' . $version);
 			}
 
 			// refresh every 6 hours
@@ -253,6 +285,7 @@ class WP_GitHub_Updater {
 				set_site_transient( md5($this->config['slug']).'_new_version', $version, 60*60*6 );
 		}
 
+		do_action ( 'qm/debug', 'Version returned: {version}', ['version' => $version]);
 		return $version;
 	}
 
@@ -308,6 +341,41 @@ class WP_GitHub_Updater {
 		return $github_data;
 	}
 
+	/**
+	 * Get GitHub Latest Release data from the specified repository
+	 *
+	 * @since 1.7
+	 * @return array $github_latest_release the data
+	 */
+	public function get_latest_release() {
+		if ( isset( $this->github_latest_release ) && ! empty( $this->github_latest_release ) ) {
+			$github_latest_release = $this->github_latest_release;
+		} else {
+			$github_latest_release = get_site_transient( md5($this->config['slug']).'_github_latest_release' );
+
+			if ( $this->overrule_transients() || ( ! isset( $github_latest_release ) || ! $github_latest_release || '' == $github_latest_release ) ) {
+				$github_latest_release = $this->remote_get( trailingslashit( $this->config['api_url'] ) . 'releases/latest'  );
+
+				if ( is_wp_error( $github_latest_release ) )
+					return false;
+
+				$github_latest_release = json_decode( $github_latest_release['body'] );
+
+				// refresh every 6 hours
+				set_site_transient( md5($this->config['slug']).'_github_latest_release', $github_latest_release, 60*60*6 );
+			}
+
+			// Store the data in this class instance for future calls
+			$this->github_latest_release = $github_latest_release;
+
+			// Overwrite the zip_url with the zipball_url from the release data info
+			if (!empty( $github_latest_release->zipball_url ))
+				$this->config['zip_url'] = $github_latest_release->zipball_url;
+		}
+
+		return $github_latest_release;
+	}
+
 
 	/**
 	 * Get update date
@@ -316,6 +384,10 @@ class WP_GitHub_Updater {
 	 * @return string $date the date
 	 */
 	public function get_date() {
+		// New in 1.7 - Prefer latest release publication date on GitHub
+		$_date = $this->get_latest_release();
+		if ( !empty( $_date->published_at ))
+			return date( 'Y-m-d', strtotime( $_date->published_at ) );
 		$_date = $this->get_github_data();
 		return ( !empty( $_date->updated_at ) ) ? date( 'Y-m-d', strtotime( $_date->updated_at ) ) : false;
 	}
@@ -355,6 +427,7 @@ class WP_GitHub_Updater {
 	 */
 	public function api_check( $transient ) {
 
+		do_action ( 'qm/debug', $transient);
 		// Check if the transient contains the 'checked' information
 		// If not, just return its value without hacking it
 		if ( empty( $transient->checked ) )
@@ -362,6 +435,7 @@ class WP_GitHub_Updater {
 
 		// check the version and decide if it's new
 		$update = version_compare( $this->config['new_version'], $this->config['version'] );
+		do_action ( 'qm/debug', 'Update check returns: {one}', ['one' => $update]);
 
 		if ( 1 === $update ) {
 			$response = new stdClass;
