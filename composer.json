@@ -32,6 +32,6 @@
     "erusev/parsedown": ">=1.7.4"
   },
   "autoload": {
-    "psr-0": {"WP_GitHub_Updater": ""}
+    "psr-0": {"RadishConcepts": ""}
   }
 }
