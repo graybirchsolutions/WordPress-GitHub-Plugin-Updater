@@ -30,6 +30,5 @@
   },
   "require": {
     "erusev/parsedown": ">=1.7.4"
-  },
-  "prefer-stable": true
+  }
 }
