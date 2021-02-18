@@ -33,7 +33,8 @@ if ( ! defined( 'ABSPATH' ) || class_exists( 'WPGitHubUpdater' ) || class_exists
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-class WP_GitHub_Updater {
+// Class name changed to eliminate underscore to comply with PSR-4/PSR-0 autoload
+class WPGitHubUpdater {
 
 	/**
 	 * GitHub Updater version
