@@ -1,5 +1,5 @@
 {
-  "name": "graybirchsolutions/wordpress-github-plugin-updater",
+  "name": "radishconcepts/wordpress-github-plugin-updater",
   "description": "This class is meant to be used with your Github hosted WordPress plugins. The purpose of the class is to allow your WordPress plugin to be updated whenever you push out a new version of your plugin; similarly to the experience users know and love with the WordPress.org plugin repository.",
   "authors": [
     {
@@ -23,15 +23,15 @@
   ],
   "type": "library",
   "license": "GPL-2.0-or-later",
-  "homepage": "https://github.com/graybirchsolutions/WordPress-GitHub-Plugin-Updater",
-  "readme": "https://github.com/graybirchsolutions/WordPress-GitHub-Plugin-Updater/blob/master/README.md",
+  "homepage": "https://github.com/radishconcepts/WordPress-GitHub-Plugin-Updater",
+  "readme": "https://github.com/radishconcepts/WordPress-GitHub-Plugin-Updater/blob/master/README.md",
   "support": {
-    "issues": "https://github.com/graybirchsolutions/WordPress-GitHub-Plugin-Updater/issues"
+    "issues": "https://github.com/radishconcepts/WordPress-GitHub-Plugin-Updater/issues"
   },
   "require": {
     "erusev/parsedown": ">=1.7.4"
   },
   "autoload": {
-    "psr-0": {"RadishConcepts": ""}
+    "psr-0": {"WP_GitHub_Updater": ""}
   }
 }
