@@ -1,7 +1,5 @@
 <?php
 
-namespace RadishConcepts;
-
 require_once __DIR__ . '/vendor/autoload.php';
 
 // Prevent loading this file directly and/or if the class is already defined
