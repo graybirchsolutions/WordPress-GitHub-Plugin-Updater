@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/vendor/autoload.php';
+
 // Prevent loading this file directly and/or if the class is already defined
 if ( ! defined( 'ABSPATH' ) || class_exists( 'WPGitHubUpdater' ) || class_exists( 'WP_GitHub_Updater' ) )
 	return;
@@ -240,7 +242,6 @@ class WP_GitHub_Updater {
 					$version = false;
 				else
 					$version = $matches[0];
-				do_action ( 'qm/debug', 'Version selected from latest release: {version}', ['version' => $version]);
 			}
 
 			// If no release tag, try version string in plugin data block
@@ -277,7 +278,6 @@ class WP_GitHub_Updater {
 					if ( -1 == version_compare( $version, $version_readme ) )
 						$version = $version_readme;
 				}
-				error_log('Version selected from Readme: ' . $version);
 			}
 
 			// refresh every 6 hours
@@ -285,7 +285,6 @@ class WP_GitHub_Updater {
 				set_site_transient( md5($this->config['slug']).'_new_version', $version, 60*60*6 );
 		}
 
-		do_action ( 'qm/debug', 'Version returned: {version}', ['version' => $version]);
 		return $version;
 	}
 
@@ -368,8 +367,18 @@ class WP_GitHub_Updater {
 			// Store the data in this class instance for future calls
 			$this->github_latest_release = $github_latest_release;
 
-			// Overwrite the zip_url with the zipball_url from the release data info
-			if (!empty( $github_latest_release->zipball_url ))
+			// Overwrite the zip_url with (1) the first zip asset or (2) the zipball_url from the release data info
+			$no_zip_asset = true;
+			if ( !empty( $github_latest_release->assets ) ) {
+				foreach ($github_latest_release->assets as $asset) {
+					if ( $asset->content_type === 'application/zip' ) {
+						$this->config['zip_url'] = $asset->browser_download_url;
+						$no_zip_asset = false;
+						break;
+					}
+				}
+			}
+			if (!empty( $github_latest_release->zipball_url && $no_zip_asset ))
 				$this->config['zip_url'] = $github_latest_release->zipball_url;
 		}
 
@@ -395,13 +404,59 @@ class WP_GitHub_Updater {
 
 	/**
 	 * Get plugin description
+	 * 
+	 * Updated for 1.7
+	 * 
+	 * get_description() now returns an array with descriptive text for different sections of the plugin information display in Wordpress.
+	 * 
+	 * Instead of the simple 'description' block from the repo metadata, this routine will retrieve the README file (presumed to be written in
+	 * Markdown), convert it to HTML and insert it into the $description array as the 'description' section.
+	 * 
+	 * Working with Releases (new for 1.7), get_description() will fetch the body text / release description (again in Markdown) stored in the
+	 * release metadata, convert it to HTML and insert it into the $description array as the 'changelog' section.
+	 * 
+	 * As an alternative to using the release description, the config can include a reference for a 'changelog' file in the repository.
+	 * The changelog file has precedence over the release description. If ommitted from the config array, release description is used.
 	 *
 	 * @since 1.0
-	 * @return string $description the description
+	 * @return array $description An associative array of strings describing different sections of the Wordpress plugin information sections.
 	 */
 	public function get_description() {
-		$_description = $this->get_github_data();
-		return ( !empty( $_description->description ) ) ? $_description->description : false;
+
+		$pd = new Parsedown; // Instantiate the Parsedown parser for Markdown
+
+		// Fetch plugin description (1) from README or (2) from the repo metadata
+		if ( !empty( $this->config['readme'] ) ) {
+			$raw_response = $this->remote_get( trailingslashit( $this->config['raw_url'] ) . $this->config['readme'] );
+			if ( is_wp_error( $raw_response ) ) {
+				$description['description'] = 'README file not found in GitHub repo.';
+			} else {
+				$description['description'] = $pd->text($raw_response['body']);
+			}
+		} else {
+			$gdata = $this->get_github_data();
+			if ( !empty( $gdata->description ) ) {
+				$description['description'] = $gdata->description;
+			}
+			else {
+				$description['description'] = 'No description available.';
+			}
+		}
+
+		// Fetch release changelog (1) from CHANGELOG file or (2) from the release description
+		if ( !empty( $this->config['changelog'] ) ) {
+			$raw_response = $this->remote_get( trailingslashit( $this->config['raw_url'] ) . $this->config['changelog'] );
+			if ( is_wp_error( $raw_response ) ) {
+				$description['changelog'] = 'Changelog not found.';
+			} else {
+				$description['changelog'] = $pd->text($raw_response['body']);
+			}
+		} else {
+			$rdata = $this->get_latest_release();
+			$description['changelog'] = $pd->text( $rdata->body );
+		}
+
+		return ( !empty( $description ) ) ? $description : false;
 	}
 
 
@@ -427,7 +482,6 @@ class WP_GitHub_Updater {
 	 */
 	public function api_check( $transient ) {
 
-		do_action ( 'qm/debug', $transient);
 		// Check if the transient contains the 'checked' information
 		// If not, just return its value without hacking it
 		if ( empty( $transient->checked ) )
@@ -435,7 +489,6 @@ class WP_GitHub_Updater {
 
 		// check the version and decide if it's new
 		$update = version_compare( $this->config['new_version'], $this->config['version'] );
-		do_action ( 'qm/debug', 'Update check returns: {one}', ['one' => $update]);
 
 		if ( 1 === $update ) {
 			$response = new stdClass;
@@ -465,7 +518,7 @@ class WP_GitHub_Updater {
 	public function get_plugin_info( $false, $action, $response ) {
 
 		// Check if this call API is for the right plugin
-		if ( !isset( $response->slug ) || $response->slug != $this->config['slug'] )
+		if ( !isset( $response->slug ) || !($response->slug == $this->config['slug'] || $response->slug == $this->config['proper_folder_name']) )
 			return false;
 
 		$response->slug = $this->config['slug'];
@@ -477,7 +530,7 @@ class WP_GitHub_Updater {
 		$response->tested = $this->config['tested'];
 		$response->downloaded   = 0;
 		$response->last_updated = $this->config['last_updated'];
-		$response->sections = array( 'description' => $this->config['description'] );
+		$response->sections = $this->config['description'];
 		$response->download_link = $this->config['zip_url'];
 
 		return $response;
