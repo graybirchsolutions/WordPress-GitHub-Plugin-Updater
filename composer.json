@@ -32,6 +32,6 @@
     "erusev/parsedown": ">=1.7.4"
   },
   "autoload": {
-    "psr-4": {"WPGitHubUpdater": ""}
+    "psr-0": {"WPGitHubUpdater": ""}
   }
 }
