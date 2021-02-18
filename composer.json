@@ -13,12 +13,6 @@
       "email": "info@radishconcepts.com",
       "homepage": "http://www.radishconcepts.com/",
       "role": "Developer"
-    },
-    {
-      "name": "Martin Jensen",
-      "email": "marty@graybirch.solutions",
-      "homepage": "https://github.com/graybirchsolutions",
-      "role": "Developer"
     }
   ],
   "type": "library",

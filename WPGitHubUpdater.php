@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+use Parsedown;
 
 // Prevent loading this file directly and/or if the class is already defined
 if ( ! defined( 'ABSPATH' ) || class_exists( 'WPGitHubUpdater' ) || class_exists( 'WP_GitHub_Updater' ) )
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) || class_exists( 'WPGitHubUpdater' ) || class_exists
  * @version 1.7
  * @author Joachim Kudish <info@jkudish.com>
  * @link http://jkudish.com
- * @package WP_GitHub_Updater
+ * @package WPGitHubUpdater
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  * @copyright Copyright (c) 2011-2013, Joachim Kudish
  *

@@ -7,10 +7,29 @@ Not all plugins can or should be hosted on the WordPress.org plugin repository, 
 This class was originally developed by [Joachim Kudish](https://github.com/jkudish), but because he hasn't had a chance to update it in a while, we stepped in. We are using this class in a couple of our own plugins (dogfooding!) and will continue to develop it as we go.
 
 ## Usage instructions
-* The class should be included somewhere in your plugin. You will need to require the file (example: `include_once('updater.php');`).
+* The class should be installed using Composer. Include the following in your plugin's composer.json file and run `php composer.phar install`:
+
+```
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/radishconcepts/WordPress-GitHub-Plugin-Updater"
+        }
+    ],
+    "require": {
+      "radishconcepts/wordpress-github-plugin-updater": "1.7"
+	}
+```
+
+* Include the class using Composer's autoloader
+
 * You will need to initialize the class using something similar to this:
 
 ```
+	<?php
+
+	use WPGitHubUpdater;
+
 	if (is_admin()) { // note the use of is_admin() to double check that this is happening in the admin
 		$config = array(
 			'slug' => plugin_basename(__FILE__), // this is the slug of your plugin
@@ -23,23 +42,34 @@ This class was originally developed by [Joachim Kudish](https://github.com/jkudi
 			'requires' => '3.0', // which version of WordPress does your plugin require?
 			'tested' => '3.3', // which version of WordPress is your plugin tested up to?
 			'readme' => 'README.md', // which file to use as the readme for the version number
+			'changelog' => 'CHANGELOG.md', // file to use as the changelog (optional: will use the GitHub release description if available)
 			'access_token' => '', // Access private repositories by authorizing under Plugins > GitHub Updates when this example plugin is installed
 		);
-		new WP_GitHub_Updater($config);
+		new WPGitHubUpdater($config);
 	}
 ```
 
-* In your GitHub repository, you will need to include the following line (formatted exactly like this) anywhere in your Readme file:
+* From v1.7, the updater will collect the current version number of your plugin from the __latest release tag__ in GitHub. We recommend making use of GitHub releases to take advantage of this new feature! (see [About GitHub Releases](https://docs.github.com/en/github/administering-a-repository/about-releases) for details). The updater will also gather the release notes, if available, to use as the Changelog entry in the admin panel.
+
+* From v1.6, the updater can pick up the version from the plugin header (now 2nd choice if releases/latest tag is not available).
+
+* Prior to v1.6, you will need to include the following line (formatted exactly like this) anywhere in your Readme file (3rd choice if there is no releases/latest tag and the version number is not in the plugin header):
 
 	`~Current Version:1.4~`
 
 * You will need to update the version number anytime you update the plugin, this will ultimately let the plugin know that a new version is available.
 
-* From v1.6, the updater can pick up the version from the plugin header as well.
-
 * Support for private repository was added in v1.5
 
 ## Changelog
+
+### 1.7 (in graybirchsolutions fork)
+* Plugin class and file renamed to allow for PSR-0 autoloading through Composer
+* Support for extracting the release number from the `releases/latest` tag in your repository
+* Retrieve the README file and render HTML from Markdown to use as the plugin description the admin panel
+* Retrieve the current release notes and render the text to use as the plugin changelog in the admin panel
+* Option to specify a changelog file instead of relying on release notes
+* composer.json updated to expose PSR-0 autoload class and require inclusion of erusev/parsedown to render README from Markdown to HTML
 
 ### 1.6 (in development)
 * Get version from plugin header instead of readme with backwards compatibility support for readme, added by [@ninnypants](https://github.com/ninnypants)
