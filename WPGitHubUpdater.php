@@ -522,6 +522,7 @@ class WPGitHubUpdater {
 
 		$response->slug = $this->config['slug'];
 		$response->plugin_name  = $this->config['plugin_name'];
+		$response->name  = $this->config['plugin_name'];
 		$response->version = $this->config['new_version'];
 		$response->author = $this->config['author'];
 		$response->homepage = $this->config['homepage'];
