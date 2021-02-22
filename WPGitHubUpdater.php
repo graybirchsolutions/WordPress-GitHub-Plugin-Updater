@@ -31,7 +31,9 @@ if ( ! defined( 'ABSPATH' ) || class_exists( 'WPGitHubUpdater' ) || class_exists
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
 // Class name changed to eliminate underscore to comply with PSR-4/PSR-0 autoload
+
 class WPGitHubUpdater {
 
 	/**
@@ -73,9 +75,12 @@ class WPGitHubUpdater {
 	 */
 	public function __construct( $config = array() ) {
 
+		// Note: plugin_basename( __FILE__ ) returns this class file, not the plugin file.
+		//       look for the top directory and assume this class is included in that plugin.
+		$path = explode('/', plugin_basename( __FILE__ ));
 		$defaults = array(
-			'slug' => plugin_basename( __FILE__ ),
-			'proper_folder_name' => dirname( plugin_basename( __FILE__ ) ),
+			'slug' => $path[0] . '/' . $path[0] . '.php',
+			'proper_folder_name' => $path[0],
 			'sslverify' => true,
 			'access_token' => '',
 		);
@@ -492,7 +497,7 @@ class WPGitHubUpdater {
 		if ( 1 === $update ) {
 			$response = new stdClass;
 			$response->new_version = $this->config['new_version'];
-			$response->slug = $this->config['proper_folder_name'];
+			$response->slug = dirname($this->config['slug']);
 			$response->url = add_query_arg( array( 'access_token' => $this->config['access_token'] ), $this->config['github_url'] );
 			$response->package = $this->config['zip_url'];
 
@@ -517,10 +522,10 @@ class WPGitHubUpdater {
 	public function get_plugin_info( $false, $action, $response ) {
 
 		// Check if this call API is for the right plugin
-		if ( !isset( $response->slug ) || !($response->slug == $this->config['slug'] || $response->slug == $this->config['proper_folder_name']) )
+		if ( !isset( $response->slug ) || !($response->slug == $this->config['slug']) )
 			return false;
 
-		$response->slug = $this->config['slug'];
+		$response->slug = dirname($this->config['slug']);
 		$response->plugin_name  = $this->config['plugin_name'];
 		$response->name  = $this->config['plugin_name'];
 		$response->version = $this->config['new_version'];
