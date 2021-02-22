@@ -96,7 +96,6 @@ class WPGitHubUpdater {
 		}
 
 		$this->set_defaults();
-
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'api_check' ) );
 
 		// Hook into the plugin details screen
@@ -223,7 +222,7 @@ class WPGitHubUpdater {
 	 * @return int $version the version number
 	 */
 	public function get_new_version() {
-		$version = get_site_transient( md5($this->config['slug']).'_new_version' );
+		$version = get_site_transient( md5(dirname($this->config['slug'])).'_new_version' );
 
 		if ( $this->overrule_transients() || ( !isset( $version ) || !$version || '' == $version ) ) {
 
@@ -286,7 +285,7 @@ class WPGitHubUpdater {
 
 			// refresh every 6 hours
 			if ( false !== $version )
-				set_site_transient( md5($this->config['slug']).'_new_version', $version, 60*60*6 );
+				set_site_transient( md5(dirname($this->config['slug'])).'_new_version', $version, 60*60*6 );
 		}
 
 		return $version;
@@ -323,7 +322,7 @@ class WPGitHubUpdater {
 		if ( isset( $this->github_data ) && ! empty( $this->github_data ) ) {
 			$github_data = $this->github_data;
 		} else {
-			$github_data = get_site_transient( md5($this->config['slug']).'_github_data' );
+			$github_data = get_site_transient( md5(dirname($this->config['slug'])).'_github_data' );
 
 			if ( $this->overrule_transients() || ( ! isset( $github_data ) || ! $github_data || '' == $github_data ) ) {
 				$github_data = $this->remote_get( $this->config['api_url'] );
@@ -334,7 +333,7 @@ class WPGitHubUpdater {
 				$github_data = json_decode( $github_data['body'] );
 
 				// refresh every 6 hours
-				set_site_transient( md5($this->config['slug']).'_github_data', $github_data, 60*60*6 );
+				set_site_transient( md5(dirname($this->config['slug'])).'_github_data', $github_data, 60*60*6 );
 			}
 
 			// Store the data in this class instance for future calls
@@ -354,7 +353,7 @@ class WPGitHubUpdater {
 		if ( isset( $this->github_latest_release ) && ! empty( $this->github_latest_release ) ) {
 			$github_latest_release = $this->github_latest_release;
 		} else {
-			$github_latest_release = get_site_transient( md5($this->config['slug']).'_github_latest_release' );
+			$github_latest_release = get_site_transient( md5(dirname($this->config['slug'])).'_github_latest_release' );
 
 			if ( $this->overrule_transients() || ( ! isset( $github_latest_release ) || ! $github_latest_release || '' == $github_latest_release ) ) {
 				$github_latest_release = $this->remote_get( trailingslashit( $this->config['api_url'] ) . 'releases/latest'  );
@@ -365,7 +364,7 @@ class WPGitHubUpdater {
 				$github_latest_release = json_decode( $github_latest_release['body'] );
 
 				// refresh every 6 hours
-				set_site_transient( md5($this->config['slug']).'_github_latest_release', $github_latest_release, 60*60*6 );
+				set_site_transient( md5(dirname($this->config['slug'])).'_github_latest_release', $github_latest_release, 60*60*6 );
 			}
 
 			// Store the data in this class instance for future calls
@@ -522,7 +521,7 @@ class WPGitHubUpdater {
 	public function get_plugin_info( $false, $action, $response ) {
 
 		// Check if this call API is for the right plugin
-		if ( !isset( $response->slug ) || !($response->slug == $this->config['slug']) )
+		if ( !isset( $response->slug ) || !($response->slug == dirname($this->config['slug'])) )
 			return false;
 
 		$response->slug = dirname($this->config['slug']);
